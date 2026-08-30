@@ -795,4 +795,428 @@ int main() {
       "用递归实现二叉树遍历",
     ],
   },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Phase 7 高级主题（指针进阶 / STL 进阶 / 类与对象 / 智能指针 / 移动语义）
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    id: "pointer-advanced",
+    title: "第 11 关：指针进阶 — 二级指针与函数指针",
+    language: "cpp",
+    difficulty: "挑战",
+    description:
+      "指针也能指向指针。函数指针让你把函数当数据传来传去，C 里回调全是它干的。",
+    goal: "实现一个 swap_ptr()（用二级指针）和一个 apply()（用函数指针）",
+    skeleton: `// 二级指针 = 指向指针的指针
+// 函数指针 = 指向函数的指针
+#include <iostream>
+
+// TODO 1: swap_ptr — 交换两个指针的指向
+void swap_ptr(int*& a, int*& b) {
+    // TODO
+}
+
+// TODO 2: apply — 用函数指针调用函数
+int apply(int x, int (*op)(int)) {
+    // TODO
+}
+
+// TODO 3: 平方函数，让 apply 调用它
+int square(int x) { return x * x; }
+
+int main() {
+    int a = 1, b = 2;
+    int* pa = &a; int* pb = &b;
+    swap_ptr(pa, pb);
+    std::cout << "*pa=" << *pa << " *pb=" << *pb << std::endl;  // 期望 2 1
+    std::cout << apply(5, square) << std::endl;                  // 期望 25
+    return 0;
+}
+`,
+    steps: [
+      {
+        line: 5,
+        title: "1. 二级引用写法",
+        explain:
+          "int*& 是「指针的引用」。参数是 a/b 这两个 int* 的别名，"
+          + "函数里交换它们，外面调用方也能看到。",
+        options: [
+          { label: "经典三行", code: "int* tmp = a;\n    a = b;\n    b = tmp;" },
+          { label: "std::swap", code: "std::swap(a, b);" },
+        ],
+        match: /int\s*\*\s*tmp\s*=\s*a|std::swap\s*\(\s*a\s*,\s*b\s*\)/,
+        hint: "出现交换语句或 std::swap(a, b) 即完成",
+      },
+      {
+        line: 10,
+        title: "2. 通过函数指针调用",
+        explain:
+          "int (*op)(int) 声明一个函数指针，指向「返回 int 接收 int」的函数。"
+          + "调它就像调普通函数：op(x) 即可。",
+        options: [
+          { label: "直接调用", code: "return op(x);" },
+          { label: "用解引用", code: "return (*op)(x);" },
+        ],
+        match: /return\s+op\s*\(|return\s+\(\s*\*\s*op\s*\)/,
+        hint: "出现 op(x) 或 (*op)(x) 即完成",
+      },
+    ],
+    pitfalls: [
+      "把 'int*& a' 写成 'int** a'（一个是引用一个是指针，不一样）",
+      "把 'int (*op)(int)' 写成 'int *op(int)' — 这是声明返回 int* 的函数，不是函数指针",
+      "函数指针用前忘了检查 nullptr",
+    ],
+    stretch: [
+      "用 std::function 改写 apply（更现代、更安全）",
+      "函数指针数组做状态机",
+      "Lambda 表达式 + std::function",
+    ],
+  },
+
+  {
+    id: "stl-advanced",
+    title: "第 12 关：STL 进阶 — map / set / algorithm",
+    language: "cpp",
+    difficulty: "进阶",
+    description:
+      "map 让你用 key 查 value，set 自动去重，algorithm 头文件有一堆神器。",
+    goal: "统计一段文本里每个单词出现次数（map + stringstream）",
+    skeleton: `// STL 进阶：map + stringstream + algorithm
+#include <iostream>
+#include <sstream>
+#include <map>
+#include <string>
+#include <algorithm>
+
+int main() {
+    std::string text = "the quick brown fox jumps over the lazy dog the dog";
+
+    // TODO 1: 用 std::map<std::string, int> 统计词频
+
+    // TODO 2: 把所有 count >= 2 的词按字母序打印
+
+    // TODO 3: 用 std::find 找 "fox" 是否出现
+
+    return 0;
+}
+`,
+    steps: [
+      {
+        line: 13,
+        title: "1. 切词 + 计数",
+        explain:
+          "stringstream 把字符串当输入流 >> 一个 word 就能按空格切。"
+          + "map[key]++ 是「有就加 1，没有就初始化为 1」的经典写法。",
+        options: [
+          { label: "经典写法", code: 'std::map<std::string, int> freq;\n    std::istringstream iss(text);\n    std::string word;\n    while (iss >> word) freq[word]++;' },
+          { label: "用 split 函数", code: "auto words = split(text);\n    std::map<std::string, int> freq;\n    for (auto& w : words) ++freq[w];" },
+        ],
+        match: /freq\s*\[\s*\w+\s*\]\s*\+\+|freq\s*\{[^}]+\}/,
+        hint: "出现 freq[xxx]++ 或初始化 freq 即完成",
+      },
+      {
+        line: 16,
+        title: "2. 过滤并打印",
+        explain:
+          "map 默认按 key 升序，所以 range for 就是按字母序遍历。"
+          + "范围 for + if 过滤，简洁明了。",
+        options: [
+          { label: "经典 range for", code: 'for (const auto& [w, c] : freq) {\n        if (c >= 2) std::cout << w << ": " << c << std::endl;\n    }' },
+          { label: "传统写法", code: "for (auto it = freq.begin(); it != freq.end(); ++it) {\n        if (it->second >= 2) std::cout << it->first << \": \" << it->second << std::endl;\n    }" },
+        ],
+        match: /for\s*\(\s*const\s+auto\s*&\s*\[|for\s*\([^)]*freq\.begin/,
+        hint: "出现范围 for 或 freq.begin() 字样即完成",
+      },
+      {
+        line: 19,
+        title: "3. 查找",
+        explain:
+          "std::find 在 [first, last) 区间找等于 value 的元素。"
+          + "找不到返回 end()，所以比较用 != end()。",
+        options: [
+          { label: "find 写法", code: 'bool found = std::find(text.begin(), text.end(), "fox") != text.end();\n    std::cout << (found ? "找到" : "没找到") << std::endl;' },
+          { label: "string::find", code: 'std::cout << (text.find("fox") != std::string::npos ? "找到" : "没找到") << std::endl;' },
+        ],
+        match: /std::find\s*\(|text\.find\s*\(/,
+        hint: "出现 std::find 或 text.find 即完成",
+      },
+    ],
+    pitfalls: [
+      "忘 #include <sstream>",
+      "map[key]++ 会默认构造一个值（即使 key 不存在），频繁调用可能略慢",
+      "用 unordered_map 替代 map — 哈希表，O(1) 平均但无序",
+    ],
+    stretch: [
+      "用 unordered_map 改写",
+      "改成统计中文字符（用 wstring）",
+      "用 std::multimap 实现一对多映射",
+    ],
+  },
+
+  {
+    id: "classes-oop",
+    title: "第 13 关：类与对象",
+    language: "cpp",
+    difficulty: "进阶",
+    description:
+      "C++ 是 C with Classes。class 把数据和操作数据的函数捆在一起。",
+    goal: "实现一个 Rectangle 类，含构造函数、area()、perimeter()",
+    skeleton: `// 类与对象：封装
+#include <iostream>
+
+class Rectangle {
+private:
+    double width;
+    double height;
+public:
+    // TODO 1: 构造函数（默认 1.0 x 1.0）
+    Rectangle(double w = 1.0, double h = 1.0) {
+        // TODO
+    }
+    // TODO 2: 计算面积
+    double area() const {
+        // TODO
+    }
+    // TODO 3: 计算周长
+    double perimeter() const {
+        // TODO
+    }
+};
+
+int main() {
+    Rectangle r1;                       // 默认 1.0 x 1.0
+    Rectangle r2(3.0, 4.0);             // 3 x 4
+    std::cout << "r2.area() = " << r2.area() << std::endl;          // 期望 12
+    std::cout << "r2.perimeter() = " << r2.perimeter() << std::endl; // 期望 14
+    return 0;
+}
+`,
+    steps: [
+      {
+        line: 8,
+        title: "1. 构造函数赋值",
+        explain:
+          "构造函数没有返回类型，函数名就是类名。"
+          + "参数带默认值 = 1.0，让无参调用也能编译。",
+        options: [
+          { label: "成员初始化列表", code: "Rectangle(double w = 1.0, double h = 1.0) : width(w), height(h) {}" },
+          { label: "函数体内赋值", code: "Rectangle(double w = 1.0, double h = 1.0) { width = w; height = h; }" },
+        ],
+        match: /:\s*width\s*\(\s*w\s*\)|width\s*=\s*w/,
+        hint: "出现 : width(w) 或 width = w 即完成",
+      },
+      {
+        line: 13,
+        title: "2. 计算面积",
+        explain:
+          "const 修饰成员函数表示「不会修改对象」，const 对象只能调 const 函数。",
+        options: [
+          { label: "一行实现", code: "return width * height;" },
+        ],
+        match: /return\s+width\s*\*\s*height/,
+        hint: "出现 'return width * height' 即完成",
+      },
+      {
+        line: 17,
+        title: "3. 计算周长",
+        explain: "周长 = 2 * (宽 + 高)。",
+        options: [
+          { label: "标准公式", code: "return 2 * (width + height);" },
+        ],
+        match: /return\s+2\s*\*\s*\(\s*width\s*\+\s*height\s*\)/,
+        hint: "出现 'return 2 * (width + height)' 即完成",
+      },
+    ],
+    pitfalls: [
+      "构造函数忘记写默认值，导致 Rectangle r; 编译报错",
+      "不写 const 修饰只读函数 — const 对象调用会编译失败",
+      "忘了 public: / private: — 默认 private，但常用方法放 public",
+    ],
+    stretch: [
+      "加 operator<< 让 std::cout 直接打印",
+      "加 is_square() 判定方法",
+      "用 struct 重写（成员默认 public）",
+    ],
+  },
+
+  {
+    id: "smart-pointers",
+    title: "第 14 关：智能指针",
+    language: "cpp",
+    difficulty: "进阶",
+    description:
+      "unique_ptr / shared_ptr 替你管 delete，告别内存泄漏。",
+    goal: "用 unique_ptr 管理动态数组，演示所有权转移",
+    skeleton: `// 智能指针：unique_ptr / shared_ptr
+#include <iostream>
+#include <memory>
+#include <vector>
+
+int main() {
+    // TODO 1: 创建 unique_ptr<int[]> 管理 5 个元素
+
+    // TODO 2: 填值 1..5 并打印
+
+    // TODO 3: std::move 转交所有权给另一个 unique_ptr
+
+    // TODO 4: shared_ptr<int> 共享一个计数指针
+
+    return 0;
+}
+`,
+    steps: [
+      {
+        line: 9,
+        title: "1. 创建 unique_ptr<int[]>",
+        explain:
+          "unique_ptr<int[]> 专门管数组，用 std::make_unique<int[]>(5) 创建。"
+          + "超出作用域自动 delete[]，不用手动释放。",
+        options: [
+          { label: "make_unique", code: "auto arr = std::make_unique<int[]>(5);" },
+          { label: "reset 写法", code: "std::unique_ptr<int[]> arr(new int[5]);" },
+        ],
+        match: /make_unique\s*<\s*int\s*\[\s*\]\s*>\s*\(\s*5\s*\)|unique_ptr\s*<\s*int\s*\[\s*\]\s*>\s*arr/,
+        hint: "出现 make_unique<int[]>(5) 或 unique_ptr<int[]> arr 即完成",
+      },
+      {
+        line: 12,
+        title: "2. 填充并打印",
+        explain: "智能指针重载了 operator[]，用 arr[i] 像普通数组一样访问。",
+        options: [
+          { label: "循环填值", code: "for (int i = 0; i < 5; ++i) arr[i] = i + 1;\n    for (int i = 0; i < 5; ++i) std::cout << arr[i] << std::endl;" },
+          { label: "范围 for", code: "for (int i = 0; i < 5; ++i) arr[i] = i + 1;\n    for (int i = 0; i < 5; ++i) std::cout << arr[i] << \" \";\n    std::cout << std::endl;" },
+        ],
+        match: /arr\s*\[\s*\w+\s*\]\s*=/,
+        hint: "出现 arr[xx] = 即完成",
+      },
+      {
+        line: 15,
+        title: "3. 移动所有权",
+        explain:
+          "std::move 显式转移所有权。之后原来的 unique_ptr 变成空（nullptr），"
+          + "新的接手管理。",
+        options: [
+          { label: "std::move", code: "auto arr2 = std::move(arr);\n    std::cout << \"arr=\" << (arr ? \"not null\" : \"null\") << std::endl;\n    std::cout << \"arr2[0]=\" << arr2[0] << std::endl;" },
+        ],
+        match: /std::move\s*\(\s*arr\s*\)/,
+        hint: "出现 std::move(arr) 即完成",
+      },
+      {
+        line: 18,
+        title: "4. shared_ptr",
+        explain:
+          "shared_ptr 多个指针共享同一个对象，内部维护引用计数，"
+          + "最后一个引用销毁时才 delete。",
+        options: [
+          { label: "共享指针", code: "auto p1 = std::make_shared<int>(42);\n    std::shared_ptr<int> p2 = p1;\n    std::cout << \"use_count=\" << p1.use_count() << std::endl;  // 期望 2" },
+        ],
+        match: /make_shared\s*<\s*int\s*>/,
+        hint: "出现 make_shared<int> 即完成",
+      },
+    ],
+    pitfalls: [
+      "一个 unique_ptr 被两个指针赋值 — 编译错误（禁止拷贝）",
+      "shared_ptr 循环引用 — 内存泄漏，用 weak_ptr 打破环",
+      "裸指针和 unique_ptr 混用 — 容易双重 delete",
+    ],
+    stretch: [
+      "shared_ptr 循环引用演示 + weak_ptr 解法",
+      "自定义删除器（管理 FILE* 等）",
+      "用 unique_ptr 实现 pImpl 模式",
+    ],
+  },
+
+  {
+    id: "move-semantics",
+    title: "第 15 关：移动语义",
+    language: "cpp",
+    difficulty: "挑战",
+    description:
+      "C++11 引入移动语义，让对象的所有权转移像指针一样轻量，不再发生昂贵的拷贝。",
+    goal: "写一个简单的 MyString，对比拷贝与移动的性能差距",
+    skeleton: `// 移动语义：std::move + 右值引用
+#include <iostream>
+#include <cstring>
+
+class MyString {
+    char* data_;
+    std::size_t size_;
+public:
+    // TODO 1: 普通构造函数
+    MyString(const char* s) {
+        // TODO
+    }
+    // TODO 2: 拷贝构造函数
+    MyString(const MyString& other) {
+        // TODO: 深拷贝
+    }
+    // TODO 3: 移动构造函数
+    MyString(MyString&& other) noexcept {
+        // TODO: 偷指针 + 置空源
+    }
+    ~MyString() { delete[] data_; }
+
+    const char* c_str() const { return data_; }
+    std::size_t size() const { return size_; }
+};
+
+int main() {
+    MyString a("hello");
+    MyString b = a;                  // 拷贝
+    MyString c = std::move(a);       // 移动
+    std::cout << "b=" << b.c_str() << std::endl;  // hello
+    std::cout << "c=" << c.c_str() << std::endl;  // hello
+    std::cout << "a=" << (a.c_str() ? a.c_str() : "null") << std::endl; // null
+    return 0;
+}
+`,
+    steps: [
+      {
+        line: 8,
+        title: "1. 普通构造函数",
+        explain:
+          "拷贝字符串到堆上。size + 1 是为 '\\0' 留位置。"
+          + "std::memcpy 或 std::copy 都行。",
+        options: [
+          { label: "经典写法", code: "size_ = std::strlen(s);\n        data_ = new char[size_ + 1];\n        std::memcpy(data_, s, size_ + 1);" },
+        ],
+        match: /data_\s*=\s*new\s+char\s*\[|std::memcpy\s*\(\s*data_/,
+        hint: "出现 data_ = new char[...] 或 std::memcpy 即完成",
+      },
+      {
+        line: 13,
+        title: "2. 深拷贝",
+        explain:
+          "拷贝构造要为新对象分配独立内存，否则两个对象共享 data_ 会双重 delete。",
+        options: [
+          { label: "深拷贝", code: "size_ = other.size_;\n        data_ = new char[size_ + 1];\n        std::memcpy(data_, other.data_, size_ + 1);" },
+        ],
+        match: /data_\s*=\s*new\s+char\s*\[|std::memcpy\s*\(\s*data_/,
+        hint: "出现 data_ = new char[...] 即完成",
+      },
+      {
+        line: 18,
+        title: "3. 移动构造（关键）",
+        explain:
+          "移动 = 「偷」指针。所有权转移到 this，other 置空防止它析构时 delete。"
+          + "noexcept 是关键，让 std::vector 等容器在重新分配时放心用移动。",
+        options: [
+          { label: "标准移动", code: "data_ = other.data_;\n        size_ = other.size_;\n        other.data_ = nullptr;\n        other.size_ = 0;" },
+        ],
+        match: /other\.data_\s*=\s*nullptr/,
+        hint: "出现 other.data_ = nullptr 即完成",
+      },
+    ],
+    pitfalls: [
+      "移动构造忘了把源对象置空 — 双重 delete",
+      "忘了 noexcept — vector 重新分配时可能退化成拷贝",
+      "在移动构造里 std::memcpy 拷贝数据 — 那不是移动",
+    ],
+    stretch: [
+      "加移动赋值运算符 =",
+      "用 = default / = delete 让编译器自动生成",
+      "对比深拷贝 vs 移动的性能（百万级字符串测试）",
+    ],
+  },
 ];

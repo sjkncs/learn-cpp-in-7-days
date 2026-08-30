@@ -109,12 +109,15 @@ window.ReviewEngine = (function () {
     for (const rule of RULES) {
       if (rule.check) continue; // 特殊规则在下面处理
       if (rule.message === "") continue; // 占位规则
-      const matches = code.match(new RegExp(rule.pattern, "g"));
+      // 保留原始 regex 上的所有 flags（m/i 等），追加 g 用于全局匹配
+      const flags = (rule.pattern.flags || "") + "g";
+      const matches = code.match(new RegExp(rule.pattern.source, flags));
       if (!matches) continue;
 
       for (const match of matches) {
         const lineNum = findLineOfMatch(code, match, rule.pattern);
         rawIssues.push({
+          id: rule.id,
           severity: rule.severity,
           line: lineNum,
           message: rule.message,
@@ -222,7 +225,9 @@ window.ReviewEngine = (function () {
 
   /** 找到匹配内容所在的行号 */
   function findLineOfMatch(code, match, pattern) {
-    const regex = new RegExp(pattern, "g");
+    // 保留 pattern 上的所有 flags（m/i 等），追加 g 用于全局搜索
+    const flags = (pattern.flags || "") + "g";
+    const regex = new RegExp(pattern.source, flags);
     let m;
     while ((m = regex.exec(code)) !== null) {
       if (m[0] === match) {
