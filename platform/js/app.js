@@ -15,6 +15,11 @@
   let editor = null;
   let currentTopicId = null;
 
+  // Judge0 配置：可由用户在 index.html 上方 script 标签覆盖
+  window.Judge0Config = window.Judge0Config || {
+    PROXY_URL: "/api/judge0", // 默认指向同源代理（Node 服务）
+  };
+
   // ── DOM 引用 ──────────────────────────────────────────────────────────────
   const $ = (s) => document.querySelector(s);
 
@@ -23,8 +28,52 @@
     renderSidebar();
     initEditor();
     bindEvents();
-    restoreLastSession();
     initHintEngineDOM();
+    probeJudge0();
+    initLLMPanel();
+
+    // 优先级：URL hash 分享 > localStorage 上次会话 > 空状态
+    const shared = window.Share.parseShareURL();
+    if (shared && shared.topicId) {
+      const topic = window.CPP_TOPICS.find((t) => t.id === shared.topicId);
+      if (topic) {
+        selectTopic(topic.id);
+        // 共享链接中的代码覆盖当前编辑器
+        setTimeout(() => {
+          if (editor) {
+            editor.setValue(shared.code);
+            window.HintEngine.onCodeChange();
+          }
+        }, 100);
+      } else {
+        restoreLastSession();
+      }
+    } else {
+      restoreLastSession();
+    }
+  }
+
+  /** 健康检查 Judge0 代理，更新 UI */
+  async function probeJudge0() {
+    const status = $("#run-status");
+    const execBtn = $("#btn-run-execute");
+    const toolbarBtn = $("#btn-run");
+
+    try {
+      const ok = await window.Judge0.ping();
+      if (ok) {
+        status.textContent = "✅ 后端代理已连接，可以编译运行";
+        status.style.color = "var(--accent)";
+        execBtn.disabled = false;
+        toolbarBtn.disabled = false;
+        toolbarBtn.title = "切换到运行 Tab";
+        toolbarBtn.addEventListener("click", () => activateTab("run"), { once: true });
+        // 改成可切换 Tab 模式
+        toolbarBtn.onclick = () => activateTab("run");
+      }
+    } catch (_) {
+      // 保持禁用状态
+    }
   }
 
   // ── 侧边栏渲染 ────────────────────────────────────────────────────────────
@@ -350,6 +399,73 @@
 
     $("#btn-review").addEventListener("click", runReview);
 
+    // Judge0 编译运行
+    $("#btn-run-execute").addEventListener("click", runOnJudge0);
+
+    // LLM 配置
+    $("#btn-llm-test").addEventListener("click", testLLM);
+    $("#btn-llm-save").addEventListener("click", saveLLMConfig);
+    $("#btn-llm-clear").addEventListener("click", clearLLMConfig);
+    $("#btn-llm-send").addEventListener("click", sendLLMMessage);
+
+    // LLM 预设切换时自动填充
+    $("#llm-provider").addEventListener("change", () => {
+      const preset = window.LLM.PRESETS[$("#llm-provider").value];
+      if (preset && preset.baseURL) $("#llm-baseurl").value = preset.baseURL;
+      if (preset && preset.model) $("#llm-model").value = preset.model;
+      if (preset && preset.placeholder) $("#llm-key").placeholder = preset.placeholder;
+    });
+
+    // Ctrl+Enter 发送
+    $("#llm-prompt").addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        sendLLMMessage();
+      }
+    });
+
+    // 导出 Markdown
+    $("#btn-export").addEventListener("click", () => {
+      const topic = window.HintEngine.getTopic();
+      if (!topic) {
+        alert("请先选择一个主题");
+        return;
+      }
+      const code = editor ? editor.getValue() : "";
+      const steps = topic.steps;
+      let doneCount = 0;
+      for (const s of steps) if (s.match && s.match.test(code)) doneCount++;
+      const issues = window.ReviewEngine.review(code, topic.language);
+
+      const md = window.Share.exportMarkdown({
+        code,
+        topic,
+        stepIdx: window.HintEngine.getStepIdx(),
+        doneCount,
+        totalSteps: steps.length,
+        reviewIssues: issues,
+      });
+
+      const safeName = topic.id.replace(/[^a-z0-9-]/gi, "-");
+      window.Share.download(`cpp-${safeName}.md`, md, "text/markdown");
+    });
+
+    // 复制可分享链接
+    $("#btn-share").addEventListener("click", async () => {
+      if (!currentTopicId) {
+        alert("请先选择一个主题");
+        return;
+      }
+      const code = editor ? editor.getValue() : "";
+      const url = window.Share.buildShareURL(code, currentTopicId);
+      const ok = await window.Share.copyToClipboard(url);
+      if (ok) {
+        showToast("🔗 链接已复制到剪贴板！");
+      } else {
+        prompt("复制失败，请手动复制：", url);
+      }
+    });
+
     // 主题切换（header 快捷）
     $("#btn-reset-session").addEventListener("click", () => {
       localStorage.removeItem("cpp-platform-session");
@@ -371,6 +487,212 @@
         runReview();
       }
     });
+  }
+
+  // ── Judge0 编译运行 ───────────────────────────────────────────────────────
+  async function runOnJudge0() {
+    if (!editor) return;
+    const topic = window.HintEngine.getTopic();
+    const lang = topic ? topic.language : "cpp";
+    const code = editor.getValue();
+    const stdin = $("#run-stdin") ? $("#run-stdin").value : "";
+
+    const out = $("#run-output");
+    const status = $("#run-status");
+    const execBtn = $("#btn-run-execute");
+
+    out.style.display = "block";
+    out.className = "run-output";
+    out.textContent = "� 正在编译运行…\n";
+    execBtn.disabled = true;
+    status.textContent = "⏳ 运行中…";
+    status.style.color = "var(--warn)";
+
+    try {
+      const result = await window.Judge0.run(code, lang, stdin);
+      renderRunResult(result);
+      status.textContent = `✅ 完成：${result.status}（${result.time || "?"}s, ${result.memory || "?"}KB）`;
+      status.style.color = "var(--accent)";
+    } catch (err) {
+      out.textContent = `❌ 错误\n${err.message}\n\n` +
+        `可能原因：\n` +
+        `1. 后端服务没启动：cd platform/server && node judge0-proxy.js\n` +
+        `2. Judge0 自部署没运行：docker compose up -d\n` +
+        `3. 网络不通`;
+      out.className = "run-output run-output--err";
+      status.textContent = "❌ 失败";
+      status.style.color = "var(--err)";
+    } finally {
+      execBtn.disabled = false;
+    }
+  }
+
+  function renderRunResult(result) {
+    const out = $("#run-output");
+    let txt = "";
+    if (result.compile_output) {
+      txt += "── 编译信息 ──\n" + result.compile_output + "\n\n";
+    }
+    if (result.stderr) {
+      txt += "── 运行时错误 ──\n" + result.stderr + "\n\n";
+    }
+    if (result.stdout) {
+      txt += "── 标准输出 ──\n" + result.stdout + "\n";
+    }
+    if (!txt) {
+      txt = "(无输出)";
+    }
+    txt += `\n── 状态 ──\n${result.status}（${result.time || "?"}s, ${result.memory || "?"}KB）`;
+
+    out.textContent = txt;
+    out.className = result.stderr || result.compile_output
+      ? "run-output run-output--err"
+      : "run-output run-output--ok";
+  }
+
+  // ── LLM 智能提示（BYOK）────────────────────────────────────────────────────
+  function initLLMPanel() {
+    const cfg = window.LLM.loadConfig();
+    if (cfg) {
+      $("#llm-provider").value = cfg.provider || "openai";
+      $("#llm-key").value = cfg.apiKey || "";
+      $("#llm-model").value = cfg.model || "";
+      $("#llm-baseurl").value = cfg.baseURL || "";
+    } else {
+      // 触发一次 change 填 placeholder
+      const evt = new Event("change");
+      $("#llm-provider").dispatchEvent(evt);
+    }
+  }
+
+  function readLLMForm() {
+    return {
+      provider: $("#llm-provider").value,
+      apiKey: $("#llm-key").value.trim(),
+      model: $("#llm-model").value.trim(),
+      baseURL: $("#llm-baseurl").value.trim(),
+    };
+  }
+
+  function saveLLMConfig() {
+    const cfg = readLLMForm();
+    if (!cfg.apiKey) {
+      alert("请先填 API Key");
+      return;
+    }
+    window.LLM.saveConfig(cfg);
+    const r = $("#llm-test-result");
+    r.textContent = "✅ 已保存（仅本会话有效）";
+    r.style.color = "var(--accent)";
+    showToast("✅ LLM 配置已保存到 sessionStorage");
+  }
+
+  function clearLLMConfig() {
+    if (!confirm("清空 LLM 配置？")) return;
+    window.LLM.clearConfig();
+    $("#llm-key").value = "";
+    $("#llm-model").value = "";
+    $("#llm-baseurl").value = "";
+    const r = $("#llm-test-result");
+    r.textContent = "已清空";
+    r.style.color = "var(--text3)";
+  }
+
+  async function testLLM() {
+    const cfg = readLLMForm();
+    const r = $("#llm-test-result");
+    r.textContent = "⏳ 测试中…";
+    r.style.color = "var(--warn)";
+
+    const result = await window.LLM.testConnection(cfg);
+    if (result.ok) {
+      r.textContent = `✅ 连接成功：${result.reply.slice(0, 50)}`;
+      r.style.color = "var(--accent)";
+    } else {
+      r.textContent = `❌ 失败：${result.error.slice(0, 150)}`;
+      r.style.color = "var(--err)";
+    }
+  }
+
+  /** 聊天历史（不持久化，关闭即清） */
+  const llmHistory = [];
+
+  async function sendLLMMessage() {
+    const cfg = readLLMForm();
+    if (!cfg.apiKey) {
+      alert("请先填 API Key 并保存");
+      return;
+    }
+    const promptText = $("#llm-prompt").value.trim();
+    if (!promptText) return;
+
+    const topic = window.HintEngine.getTopic();
+    const code = editor ? editor.getValue() : "";
+
+    // 1. 渲染用户消息
+    appendLLMMessage("user", promptText);
+    $("#llm-prompt").value = "";
+
+    // 2. 拼装上下文：当前主题 + 代码
+    const sys = `你是一个 C/C++ 教学助手，帮助初学者理解代码、改进写法。\n` +
+      `当前学习主题：${topic ? topic.title : "自由编辑"}\n` +
+      `主题目标：${topic ? topic.goal : ""}\n` +
+      `用户当前代码：\n\`\`\`cpp\n${code}\n\`\`\`\n` +
+      `回答要简洁，必要时给出代码片段。用中文回复。`;
+
+    llmHistory.push({ role: "user", content: promptText });
+
+    // 3. 创建 assistant 占位
+    const assistantMsg = appendLLMMessage("assistant", "⏳ 思考中…");
+
+    // 4. 禁用发送按钮
+    const sendBtn = $("#btn-llm-send");
+    sendBtn.disabled = true;
+
+    try {
+      const reply = await window.LLM.chat({
+        ...cfg,
+        systemPrompt: sys,
+        messages: llmHistory.slice(-10), // 最近 10 条
+      });
+      assistantMsg.textContent = reply;
+      llmHistory.push({ role: "assistant", content: reply });
+    } catch (err) {
+      assistantMsg.textContent = `❌ ${err.message}\n\n请检查：\n1. Key 是否正确\n2. 模型名是否支持\n3. 网络是否可达`;
+      assistantMsg.classList.add("llm-msg--err");
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  function appendLLMMessage(role, text) {
+    const list = $("#llm-messages");
+    // 清掉首次的引导气泡
+    if (list.querySelector(".llm-empty")) list.innerHTML = "";
+
+    const div = document.createElement("div");
+    div.className = `llm-msg ${role === "user" ? "llm-msg--user" : "llm-msg--assistant"}`;
+    div.innerHTML =
+      `<div class="llm-msg__role">${role === "user" ? "我" : "AI"}</div>` +
+      `<div class="llm-msg__body">${esc(text)}</div>`;
+    list.appendChild(div);
+    list.scrollTop = list.scrollHeight;
+    return div.querySelector(".llm-msg__body");
+  }
+
+  // ── Toast 提示 ─────────────────────────────────────────────────────────────
+  function showToast(msg, durationMs = 2000) {
+    let toast = document.getElementById("global-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "global-toast";
+      toast.className = "toast";
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add("toast--show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove("toast--show"), durationMs);
   }
 
   // ── 工具 ───────────────────────────────────────────────────────────────────

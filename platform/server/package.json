@@ -1,0 +1,17 @@
+{
+  "name": "cpp-platform-judge0-proxy",
+  "version": "1.0.0",
+  "description": "反向代理服务，把平台请求转发到 Judge0（自部署或 RapidAPI）",
+  "main": "judge0-proxy.js",
+  "scripts": {
+    "start": "node judge0-proxy.js",
+    "dev": "node --watch judge0-proxy.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

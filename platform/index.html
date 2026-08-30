@@ -51,6 +51,15 @@
         <span class="editor-toolbar__label">语言</span>
         <span class="editor-toolbar__lang" id="editor-lang">—</span>
         <div class="editor-toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btn-run" title="用 Judge0 真编译运行（需后端服务）" disabled>
+          ▶ 运行
+        </button>
+        <button class="btn btn--ghost" id="btn-export" title="导出为 Markdown 报告">
+          📤 导出
+        </button>
+        <button class="btn btn--ghost" id="btn-share" title="复制可分享链接">
+          🔗 分享
+        </button>
         <button class="btn btn--ghost" id="btn-review" title="Ctrl+Enter 也可触发">
           🔍 代码审查
         </button>
@@ -73,6 +82,8 @@
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="hints">💡 提示</button>
         <button class="tab-btn"        data-tab="review">🔍 审查</button>
+        <button class="tab-btn"        data-tab="run">▶ 运行</button>
+        <button class="tab-btn"        data-tab="llm">🤖 AI</button>
       </div>
 
       <!-- Tab 1: 提示面板 -->
@@ -88,6 +99,66 @@
           <div class="review-empty">
             <div class="review-empty__icon">🔍</div>
             <p>点击下方「🔍 代码审查」按钮<br>或按 <kbd>Ctrl+Enter</kbd><br>开始静态审查</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: 运行面板 -->
+      <div class="tab-content" data-tab="run">
+        <div class="run-body" id="run-body" style="padding:12px; display:flex; flex-direction:column; gap:10px;">
+          <div id="run-status" style="font-size:12px; color:var(--text3);">⚪ 后端未配置（仅静态编辑模式）</div>
+          <label style="font-size:12px; color:var(--text2);">标准输入（可选）：</label>
+          <textarea id="run-stdin" placeholder="程序会从 stdin 读取的内容" style="height:60px; padding:6px; border:1px solid var(--border); border-radius:4px; font-family:var(--mono); font-size:12px; background:var(--surface2); color:var(--text);"></textarea>
+          <button class="btn btn--primary" id="btn-run-execute" disabled style="margin-top:6px;">
+            ▶ 编译并运行
+          </button>
+          <div id="run-output" class="run-output" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Tab 4: LLM 智能提示面板 -->
+      <div class="tab-content" data-tab="llm">
+        <div class="llm-body">
+          <div class="llm-config">
+            <div class="llm-config__row">
+              <label>服务</label>
+              <select id="llm-provider" class="llm-config__select">
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="custom">自定义（OpenAI 兼容）</option>
+              </select>
+            </div>
+            <div class="llm-config__row">
+              <label>Key</label>
+              <input type="password" id="llm-key" class="llm-config__input" placeholder="sk-..." />
+            </div>
+            <div class="llm-config__row">
+              <label>模型</label>
+              <input type="text" id="llm-model" class="llm-config__input" placeholder="gpt-4o-mini" />
+            </div>
+            <div class="llm-config__row">
+              <label>URL</label>
+              <input type="text" id="llm-baseurl" class="llm-config__input" placeholder="https://api.openai.com/v1" />
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="llm-config__btn" id="btn-llm-test">🔌 测试连接</button>
+              <button class="llm-config__btn" id="btn-llm-save">💾 保存</button>
+              <button class="llm-config__btn" id="btn-llm-clear" style="color:var(--err);">🗑️ 清空</button>
+            </div>
+            <div id="llm-test-result" style="margin-top:6px; font-size:11px;"></div>
+          </div>
+
+          <div class="llm-messages" id="llm-messages">
+            <div class="llm-empty">
+              <div class="llm-empty__icon">🤖</div>
+              <p>填入 API Key 后<br>可以问 AI：<br>「我想换一种实现方式」<br>「这段代码哪里有问题」</p>
+            </div>
+          </div>
+
+          <div class="llm-input">
+            <textarea class="llm-input__textarea" id="llm-prompt" placeholder="问点什么…(Shift+Enter 换行, Ctrl+Enter 发送)"></textarea>
+            <button class="llm-input__btn" id="btn-llm-send">发送</button>
           </div>
         </div>
       </div>
@@ -109,6 +180,9 @@
   <script src="js/topics.js"></script>
   <script src="js/hints.js"></script>
   <script src="js/review.js"></script>
+  <script src="js/share.js"></script>
+  <script src="js/judge0.js"></script>
+  <script src="js/llm.js"></script>
   <script src="js/app.js"></script>
 
 </body>
