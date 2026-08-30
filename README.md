@@ -24,10 +24,15 @@ https://<your-github-username>.github.io/learn-cpp-in-7-days/
 例如你的用户名是 `sjkncs`，则访问：
 https://sjkncs.github.io/learn-cpp-in-7-days/
 
-**启用步骤**（首次）：
+**启用步骤**（**必须手动** —— GitHub 平台限制，workflow token 没有 Pages admin 权限）：
+
 1. 进入仓库的 Settings > Pages
 2. Source 选 **GitHub Actions**
 3. 推送代码后会自动部署，每次 push 到 `main` 都会更新
+
+> 为什么不能全自动：GitHub Pages 创建 API 需要 admin 权限，
+> 普通 workflow 的 `GITHUB_TOKEN` 即使给了 `pages: write` 也只能部署、不能创建站点。
+> 第一次必须人工点一下。
 
 代码仓库：https://github.com/sjkncs/learn-cpp-in-7-days
 

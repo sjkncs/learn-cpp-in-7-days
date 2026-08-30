@@ -17,7 +17,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Node 20 在 2025-09 已 deprecated；用 Node 22（最新 LTS）
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
