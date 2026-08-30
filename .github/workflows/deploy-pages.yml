@@ -31,6 +31,9 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
+        with:
+          # 自动启用 Pages（首次部署无需手动 Settings > Pages）
+          enablement: true
 
       - name: Upload artifact (platform/ as site root)
         uses: actions/upload-pages-artifact@v3
