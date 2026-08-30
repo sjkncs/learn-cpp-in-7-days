@@ -1,0 +1,18 @@
+{
+  "name": "learn-cpp-in-7-days",
+  "version": "1.5.0",
+  "private": true,
+  "type": "module",
+  "description": "交互式 C++ 编程辅助平台 — 边写边学",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "start": "cd platform && npx serve",
+    "lint:syntax": "node --check platform/js/*.js"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1",
+    "vitest": "^2.1.8"
+  }
+}
