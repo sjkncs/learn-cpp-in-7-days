@@ -1,0 +1,45 @@
+# 编译产物
+*.o
+*.obj
+*.exe
+*.out
+*.class
+*.pyc
+*.so
+*.dll
+*.lib
+
+# IDE
+.vscode/
+.idea/
+.vs/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 系统临时
+Thumbs.db
+desktop.ini
+
+# 依赖
+node_modules/
+package-lock.json
+yarn.lock
+
+# 构建
+dist/
+build/
+.cache/
+
+# 日志
+*.log
+
+# 环境变量
+.env
+.env.local
+
+# 编辑器临时
+*.bak
+*.tmp
+*.orig

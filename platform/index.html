@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C++ 编程辅助平台 — 边写边学</title>
+
+  <!-- ── 样式 ── -->
+  <link rel="stylesheet" href="css/app.css" />
+
+  <!-- ── CodeMirror 5（CDN） ── -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+
+  <!-- ── 图标字体 ── -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- ── Favicon ── -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════ HEADER -->
+  <header class="header">
+    <div class="header__logo">🔧 C++ 辅助平台</div>
+    <div class="header__desc">边写边学 · 提示引擎 · 规则审查</div>
+    <div class="header__actions">
+      <button class="btn btn--ghost" id="btn-theme" title="切换明暗主题">☀️ 亮色</button>
+      <button class="btn btn--ghost" id="btn-reset-session" title="清空记忆，重新开始">🗑️ 重置</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════ MAIN -->
+  <main class="main">
+
+    <!-- ── Pane 1: 侧边栏（主题列表）────────────────────────────── -->
+    <aside class="sidebar">
+      <div class="sidebar__heading">📚 学习主题</div>
+      <div class="topic-list">
+        <!-- 动态渲染 -->
+      </div>
+    </aside>
+
+    <!-- ── Pane 2: 代码编辑器 ──────────────────────────────────── -->
+    <section class="editor-pane">
+      <div class="editor-toolbar">
+        <span class="editor-toolbar__label">语言</span>
+        <span class="editor-toolbar__lang" id="editor-lang">—</span>
+        <div class="editor-toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btn-review" title="Ctrl+Enter 也可触发">
+          🔍 代码审查
+        </button>
+        <button class="btn btn--ghost" id="btn-save" title="已自动保存到浏览器本地"
+          onclick="alert('已自动保存 ✅\n关闭页面后重新打开会恢复当前进度。')">
+          💾 保存
+        </button>
+      </div>
+
+      <!-- 这里是 CodeMirror 挂载点 -->
+      <div class="editor-container" id="editor-mount">
+        <!-- <textarea id="code-area"></textarea> 由 JS 动态创建 -->
+      </div>
+    </section>
+
+    <!-- ── Pane 3: 提示 + 审查 ──────────────────────────────────── -->
+    <aside class="right-pane">
+
+      <!-- Tab 切换 -->
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="hints">💡 提示</button>
+        <button class="tab-btn"        data-tab="review">🔍 审查</button>
+      </div>
+
+      <!-- Tab 1: 提示面板 -->
+      <div class="tab-content active" data-tab="hints">
+        <div class="hint-body" id="hint-body">
+          <!-- 动态渲染 -->
+        </div>
+      </div>
+
+      <!-- Tab 2: 审查面板 -->
+      <div class="tab-content" data-tab="review">
+        <div class="review-body" id="review-body">
+          <div class="review-empty">
+            <div class="review-empty__icon">🔍</div>
+            <p>点击下方「🔍 代码审查」按钮<br>或按 <kbd>Ctrl+Enter</kbd><br>开始静态审查</p>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════════ FOOTER -->
+  <footer class="footer">
+    <div class="footer__progress" id="progress-text">选择一个主题开始学习</div>
+    <div class="footer__actions">
+      <button class="btn btn--ghost" id="btn-prev" title="返回上一步">◀ 上一步</button>
+      <button class="btn btn--primary" id="btn-next" title="跳到下一个待完成的步骤">下一条 ▶</button>
+      <button class="btn btn--ghost" id="btn-reset" title="清空编辑器，重新开始本主题">🔄 重置</button>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════════════════════════ SCRIPTS -->
+  <script src="js/topics.js"></script>
+  <script src="js/hints.js"></script>
+  <script src="js/review.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
